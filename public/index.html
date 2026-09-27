@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#004578">
+<title>Windows NT Quiz</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Segoe UI', system-ui, sans-serif; }
+  html, body { overscroll-behavior: none; }
+  body {
+    min-height: 100vh; min-height: 100dvh;
+    background: linear-gradient(135deg, #0078d4 0%, #106ebe 50%, #004578 100%);
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(12px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) calc(12px + env(safe-area-inset-left));
+    color: #333; -webkit-tap-highlight-color: transparent;
+  }
+  .container {
+    background: #fff; border-radius: 16px; padding: clamp(18px, 4vw, 32px);
+    max-width: 700px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+    max-height: calc(100dvh - 24px); overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
+  .container.wide { max-width: 1000px; }
+  h1 { color: #0078d4; margin-bottom: 8px; text-align: center; font-size: clamp(20px, 5.5vw, 28px); }
+  h2 { color: #0078d4; margin-bottom: 16px; font-size: clamp(16px, 4.5vw, 22px); }
+  .subtitle { color: #666; text-align: center; margin-bottom: 24px; font-size: clamp(13px, 3.6vw, 16px); }
+  input {
+    width: 100%; padding: 14px; font-size: 16px;
+    border: 2px solid #ddd; border-radius: 8px; margin-bottom: 12px;
+  }
+  input:focus { outline: none; border-color: #0078d4; }
+  button {
+    padding: 14px 22px; background: #0078d4; color: #fff; border: none;
+    border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer;
+    margin: 4px; min-height: 48px; touch-action: manipulation; user-select: none;
+  }
+  button:active { transform: scale(0.97); }
+  button.secondary { background: #6c757d; }
+  button.danger { background: #d13438; }
+  button.success { background: #107c10; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .error { color: #d13438; text-align: center; margin: 10px 0; min-height: 20px; font-weight: 600; }
+  .screen { display: none; }
+  .screen.active { display: block; }
+  .lang-buttons { display: flex; gap: 12px; margin-top: 20px; }
+  .lang-buttons button { padding: 20px; font-size: clamp(16px, 4.5vw, 20px); flex: 1; }
+
+  .quiz-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; gap: 8px; }
+  .timer { font-size: clamp(22px, 7vw, 28px); font-weight: 700; color: #0078d4; min-width: 56px; text-align: right; }
+  .timer.danger { color: #d13438; animation: pulse 0.5s infinite; }
+  @keyframes pulse { 50% { transform: scale(1.15); } }
+  .progress { height: 8px; background: #e0e0e0; border-radius: 4px; overflow: hidden; margin-bottom: 12px; }
+  .progress-bar { height: 100%; background: linear-gradient(90deg, #0078d4, #106ebe); transition: width 0.3s; }
+  .timer-bar { height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 16px; }
+  .timer-fill { height: 100%; background: #0078d4; transition: width 0.1s linear; }
+  .timer-fill.danger { background: #d13438; }
+  .question-num { color: #666; font-size: 13px; margin-bottom: 8px; }
+  .question-text { font-size: clamp(15px, 4.3vw, 18px); color: #222; margin-bottom: 18px; line-height: 1.5; }
+  .options { display: grid; gap: 10px; }
+  .option {
+    padding: 16px; background: #f3f3f3; border: 2px solid transparent; border-radius: 10px;
+    cursor: pointer; text-align: left; font-size: clamp(14px, 4vw, 15px); line-height: 1.4;
+    min-height: 54px; touch-action: manipulation;
+    -webkit-user-select: none; user-select: none; -webkit-touch-callout: none;
+  }
+  .option:active:not(:disabled) { background: #e5f1fb; border-color: #0078d4; }
+  .option.selected { background: #e5f1fb; border-color: #0078d4; }
+  .option.correct { background: #dff6dd; border-color: #107c10; color: #0a4d0a; }
+  .option.wrong { background: #fde7e9; border-color: #d13438; color: #8a0e15; }
+  .option:disabled { cursor: not-allowed; }
+  .score-display { font-size: 14px; color: #666; }
+
+  .result { text-align: center; }
+  .big-score { font-size: clamp(40px, 12vw, 56px); font-weight: 700; color: #0078d4; margin: 16px 0; }
+  .result-msg { font-size: clamp(14px, 4vw, 18px); color: #555; margin-bottom: 20px; }
+  .leaderboard { text-align: left; margin: 20px 0; }
+  .leaderboard h3 { margin-bottom: 12px; color: #0078d4; }
+  .lb-row {
+    display: flex; justify-content: space-between; gap: 8px; padding: 11px 12px;
+    background: #f3f3f3; border-radius: 6px; margin-bottom: 6px; font-size: 14px; flex-wrap: wrap;
+  }
+  .lb-row.me { background: #e5f1fb; border-left: 4px solid #0078d4; }
+  .lb-rank { font-weight: 700; color: #0078d4; min-width: 30px; }
+
+  .admin-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px; }
+  .stat-card { background: #f3f3f3; padding: 12px 6px; border-radius: 8px; text-align: center; }
+  .stat-value { font-size: clamp(18px, 5.5vw, 26px); font-weight: 700; color: #0078d4; }
+  .stat-label { font-size: clamp(10px, 2.8vw, 12px); color: #666; margin-top: 4px; }
+  .phase-line {
+    text-align: center; padding: 10px; border-radius: 8px; margin-bottom: 14px;
+    background: #e5f1fb; color: #004578; font-weight: 600; font-size: 14px;
+  }
+  .admin-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .admin-actions button { flex: 1 1 auto; font-size: 14px; padding: 12px 10px; }
+  table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+  th, td { padding: 10px 8px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
+  th { background: #f3f3f3; color: #0078d4; font-size: 13px; }
+  td button { padding: 8px 12px; font-size: 13px; min-height: 40px; }
+  .td-label { display: none; }
+  .status { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; display: inline-block; white-space: nowrap; }
+  .status.waiting { background: #fff4ce; color: #7a5d00; }
+  .status.playing { background: #dff6dd; color: #0a4d0a; }
+  .status.finished { background: #e5f1fb; color: #004578; }
+  .status.kicked { background: #fde7e9; color: #8a0e15; }
+  .actions { display: flex; gap: 6px; flex-wrap: wrap; }
+  .online-dot { font-size: 11px; margin-right: 4px; }
+
+  .lobby { text-align: center; padding: clamp(20px, 6vw, 40px) 10px; }
+  .lobby-icon { font-size: clamp(48px, 14vw, 72px); margin-bottom: 20px; animation: spin 3s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .lobby-text { font-size: clamp(14px, 4vw, 18px); color: #555; margin-bottom: 16px; }
+  .lobby-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin: 16px 0; }
+  .chip { background: #e5f1fb; color: #004578; padding: 6px 14px; border-radius: 20px; font-size: 13px; font-weight: 600; }
+
+  .warning {
+    position: fixed; inset: 0; background: rgba(209, 52, 56, 0.96); color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9999; padding: 24px; text-align: center;
+  }
+  .warning h1 { color: #fff; font-size: clamp(24px, 8vw, 44px); margin-bottom: 16px; }
+  .warning p { font-size: clamp(14px, 4.5vw, 20px); max-width: 600px; line-height: 1.5; }
+
+  .conn-lost {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.88); color: #fff;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    z-index: 9998; text-align: center; padding: 24px; gap: 16px;
+  }
+  .conn-lost h2 { color: #fff; }
+
+  .toast {
+    position: fixed; top: 18%; left: 50%; transform: translateX(-50%);
+    background: rgba(0,0,0,0.85); color: #fff; padding: 12px 28px;
+    border-radius: 30px; font-size: 22px; font-weight: 700; z-index: 5000;
+    animation: toastAnim 1.3s forwards; pointer-events: none; white-space: nowrap;
+  }
+  .toast.good { background: rgba(16, 124, 16, 0.92); }
+  .toast.bad { background: rgba(209, 52, 56, 0.92); }
+  @keyframes toastAnim {
+    0% { opacity: 0; transform: translate(-50%, 12px); }
+    15% { opacity: 1; transform: translate(-50%, 0); }
+    80% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  .hidden { display: none !important; }
+
+  @media (max-width: 720px) {
+    .admin-stats { grid-template-columns: repeat(2, 1fr); }
+    table, tbody, tr, td { display: block; width: 100%; }
+    thead { display: none; }
+    tr { background: #f9f9f9; border-radius: 10px; margin-bottom: 10px; padding: 6px 10px; border: 1px solid #eee; }
+    td { display: flex; justify-content: space-between; align-items: center; gap: 10px; border: none; padding: 8px 2px; }
+    .td-label { display: inline; font-weight: 600; color: #888; font-size: 12px; }
+    .actions { justify-content: flex-end; }
+    .actions button { flex: 1; }
+  }
+  @media (max-width: 480px) {
+    .lang-buttons { flex-direction: column; }
+    .admin-actions button { flex: 1 1 100%; }
+    body { padding: 8px; padding-top: calc(8px + env(safe-area-inset-top)); }
+    .container { max-height: calc(100dvh - 16px); border-radius: 12px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="warningScreen" class="warning hidden">
+  <h1>⚠️ <span data-t="cheatingDetected">Обнаружено нарушение!</span></h1>
+  <p data-t="cheatingMsg">Вы переключились на другую вкладку, окно или приложение. Тест завершён досрочно. Обратитесь к администратору.</p>
+</div>
+
+<div id="connLost" class="conn-lost hidden">
+  <h2 data-t="connectionLost">Соединение потеряно</h2>
+  <button onclick="location.reload()" data-t="reloadPage">Обновить страницу</button>
+</div>
+
+<div class="container" id="mainContainer">
+
+  <div id="screen-lang" class="screen active">
+    <h1>🖥️ Windows NT Quiz</h1>
+    <p class="subtitle">Процесстер мен ағындар архитектурасы / Архитектура процессов и потоков</p>
+    <h2 style="text-align:center; margin-top:24px;">Тілді таңдаңыз / Выберите язык</h2>
+    <div class="lang-buttons">
+      <button onclick="setLang('kz')">🇰🇿 Қазақша</button>
+      <button onclick="setLang('ru')">🇷🇺 Русский</button>
+    </div>
+  </div>
+
+  <div id="screen-login" class="screen">
+    <h1 data-t="enterCode">Введите код доступа</h1>
+    <p class="subtitle" data-t="codeSubtitle">Код выдаётся организатором</p>
+    <input type="text" id="codeInput" placeholder="********" autocomplete="off" autocapitalize="characters">
+    <button onclick="submitCode()" data-t="enter" style="width:100%;">Войти</button>
+    <div class="error" id="loginError"></div>
+    <div style="text-align:center; margin-top:8px;">
+      <button class="secondary" onclick="backToLang()" data-t="changeLang">Сменить язык</button>
+    </div>
+  </div>
+
+  <div id="screen-register" class="screen">
+    <h1 data-t="registration">Регистрация</h1>
+    <p class="subtitle" data-t="enterName">Введите ваше имя (будет в рейтинге)</p>
+    <input type="text" id="nameInput" maxlength="30" autocomplete="off">
+    <button onclick="doRegister()" data-t="registerBtn" style="width:100%;">Зарегистрироваться</button>
+    <div class="error" id="regError"></div>
+  </div>
+
+  <div id="screen-lobby" class="screen">
+    <div class="lobby">
+      <div class="lobby-icon">⏳</div>
+      <h1 data-t="waiting">Ожидание запуска...</h1>
+      <p class="lobby-text" id="lobbyText" data-t="waitAdmin">Администратор скоро начнёт тест.</p>
+      <p class="score-display" style="margin-bottom:8px;"><span data-t="yourName">Ваше имя:</span> <strong id="lobbyName"></strong></p>
+      <p class="score-display" id="lobbyCount"></p>
+      <div class="lobby-chips" id="lobbyChips"></div>
+      <button class="secondary" onclick="exitToLogin()" data-t="leave">Выйти</button>
+    </div>
+  </div>
+
+  <div id="screen-admin" class="screen">
+    <h1 data-t="adminPanel">Панель администратора</h1>
+    <div class="phase-line" id="adminPhase"></div>
+    <div class="admin-stats">
+      <div class="stat-card"><div class="stat-value" id="stat-total">0</div><div class="stat-label" data-t="totalUsers">Всего</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-waiting">0</div><div class="stat-label" data-t="waitingCount">Ожидают</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-playing">0</div><div class="stat-label" data-t="playingCount">В тесте</div></div>
+      <div class="stat-card"><div class="stat-value" id="stat-finished">0</div><div class="stat-label" data-t="finishedCount">Завершили</div></div>
+    </div>
+    <div class="admin-actions">
+      <button class="success" id="startBtn" onclick="socket.emit('admin:start')" data-t="startQuiz">▶ Начать тест</button>
+      <button class="secondary" id="stopBtn" onclick="socket.emit('admin:stop')" data-t="stopQuiz">⏸ Остановить</button>
+      <button class="secondary" onclick="adminReset()" data-t="resetAll">♻ Сбросить всё</button>
+      <button class="danger" onclick="adminClear()" data-t="deleteAll">🗑 Удалить всех</button>
+      <button class="secondary" onclick="location.reload()" data-t="logout">Выйти</button>
+    </div>
+    <h2 data-t="leaderboard">🏆 Рейтинг (онлайн)</h2>
+    <div id="leaderboardAdmin"></div>
+    <h2 data-t="usersList" style="margin-top:20px;">Пользователи</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>#</th><th data-t="name">Имя</th><th data-t="status">Статус</th>
+          <th data-t="progress">Прогресс</th><th data-t="score">Очки</th><th data-t="actions">Действия</th>
+        </tr>
+      </thead>
+      <tbody id="usersTable"></tbody>
+    </table>
+  </div>
+
+  <div id="screen-quiz" class="screen">
+    <div class="quiz-header">
+      <div class="score-display">⭐ <strong id="currentScore">0</strong> <span data-t="points">очков</span></div>
+      <div class="timer" id="timerDisplay">15</div>
+    </div>
+    <div class="progress"><div class="progress-bar" id="progressBar"></div></div>
+    <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+    <div class="question-num" id="questionNum"></div>
+    <div class="question-text" id="questionText"></div>
+    <div class="options" id="options"></div>
+  </div>
+
+  <div id="screen-result" class="screen">
+    <div class="result">
+      <h1 data-t="yourResult">🏆 Ваш результат</h1>
+      <div class="big-score" id="finalScore">0</div>
+      <div class="result-msg" id="resultMsg"></div>
+      <div class="leaderboard">
+        <h3 data-t="topPlayers">🥇 Топ игроков</h3>
+        <div id="finalLeaderboard"></div>
+      </div>
+      <button onclick="exitToLogin()" data-t="exit" style="width:100%;">Выйти</button>
+    </div>
+  </div>
+
+</div>
+
+<script src="/socket.io/socket.io.js"></script>
+<script>
+// ====== ПЕРЕВОДЫ ======
+const i18n = {
+  ru: {
+    enterCode: "Введите код доступа", codeSubtitle: "Код выдаётся организатором",
+    enter: "Войти", changeLang: "Сменить язык",
+    wrongCode: "Неверный код доступа",
+    registration: "Регистрация",
+    enterName: "Введите ваше имя (будет в рейтинге)",
+    registerBtn: "Зарегистрироваться",
+    nameRequired: "Введите имя", nameTaken: "Это имя уже занято",
+    kicked: "Вы исключены администратором",
+    alreadyStarted: "Тест уже начался. Дождитесь окончания.",
+    waiting: "Ожидание запуска...",
+    waitAdmin: "Администратор скоро начнёт тест.",
+    lobbyFinished: "Прошлый тест завершён. Ожидание нового старта.",
+    yourName: "Ваше имя:", leave: "Выйти",
+    waitingPlayers: "Ожидают: {n}",
+    adminPanel: "Панель администратора",
+    totalUsers: "Всего", waitingCount: "Ожидают", playingCount: "В тесте", finishedCount: "Завершили",
+    startQuiz: "▶ Начать тест", stopQuiz: "⏸ Остановить",
+    resetAll: "♻ Сбросить всё", deleteAll: "🗑 Удалить всех", logout: "Выйти",
+    leaderboard: "🏆 Рейтинг", usersList: "Пользователи",
+    name: "Имя", status: "Статус", progress: "Прогресс", score: "Очки", actions: "Действия",
+    points: "очков",
+    yourResult: "🏆 Ваш результат", topPlayers: "🥇 Топ игроков", exit: "Выйти",
+    sWaiting: "Ожидает", sPlaying: "В тесте", sFinished: "Завершил", sKicked: "Исключён",
+    kick: "Удалить", reset: "Сброс",
+    noUsers: "Пока нет пользователей",
+    cheatingDetected: "Обнаружено нарушение!",
+    cheatingMsg: "Вы переключились на другую вкладку, окно или приложение. Тест завершён досрочно. Обратитесь к администратору.",
+    perfect: "🌟 Превосходно! Идеальный результат!",
+    great: "🎉 Отличная работа!", good: "👍 Хороший результат!",
+    bad: "📚 Стоит повторить материал",
+    questionOf: "Вопрос {n} из {total}",
+    timeUp: "⏰ Время вышло!",
+    connectionLost: "Соединение потеряно",
+    reloadPage: "Обновить страницу",
+    confirmClear: "Удалить всех пользователей?",
+    confirmReset: "Сбросить все результаты?",
+    phaseIdle: "⏳ Статус: ожидание старта",
+    phasePlaying: "🔴 Статус: идёт вопрос {n} из {total}",
+    phaseFinished: "✅ Статус: тест завершён",
+  },
+  kz: {
+    enterCode: "Қатынау кодын енгізіңіз", codeSubtitle: "Кодты ұйымдастырушы береді",
+    enter: "Кіру", changeLang: "Тілді ауыстыру",
+    wrongCode: "Қате код",
+    registration: "Тіркелу",
+    enterName: "Есіміңізді енгізіңіз (рейтингте көрсетіледі)",
+    registerBtn: "Тіркелу",
+    nameRequired: "Есіміңізді енгізіңіз", nameTaken: "Бұл есім бос емес",
+    kicked: "Сізді әкімші шығарды",
+    alreadyStarted: "Тест басталып кетті. Аяқталғанша күтіңіз.",
+    waiting: "Басталуды күту...",
+    waitAdmin: "Әкімші тестті жақында бастайды.",
+    lobbyFinished: "Алдыңғы тест аяқталды. Жаңа старт күтілуде.",
+    yourName: "Сіздің есіміңіз:", leave: "Шығу",
+    waitingPlayers: "Күтуде: {n}",
+    adminPanel: "Әкімші панелі",
+    totalUsers: "Барлығы", waitingCount: "Күтуде", playingCount: "Тестте", finishedCount: "Аяқтады",
+    startQuiz: "▶ Тестті бастау", stopQuiz: "⏸ Тоқтату",
+    resetAll: "♻ Бәрін қалпына келтіру", deleteAll: "🗑 Бәрін жою", logout: "Шығу",
+    leaderboard: "🏆 Рейтинг", usersList: "Пайдаланушылар",
+    name: "Есімі", status: "Мәртебе", progress: "Прогресс", score: "Ұпай", actions: "Әрекеттер",
+    points: "ұпай",
+    yourResult: "🏆 Сіздің нәтижеңіз", topPlayers: "🥇 Үздік ойыншылар", exit: "Шығу",
+    sWaiting: "Күтуде", sPlaying: "Тестте", sFinished: "Аяқтады", sKicked: "Шығарылды",
+    kick: "Жою", reset: "Қалпына",
+    noUsers: "Пайдаланушылар жоқ",
+    cheatingDetected: "Ереже бұзу анықталды!",
+    cheatingMsg: "Сіз басқа қойындыға, терезеге немесе қосымшаға ауыстыңыз. Тест тоқтатылды. Әкімшіге хабарласыңыз.",
+    perfect: "🌟 Керемет! Мінсіз нәтиже!",
+    great: "🎉 Тамаша жұмыс!", good: "👍 Жақсы нәтиже!",
+    bad: "📚 Материалды қайталау керек",
+    questionOf: "{n}-сұрақ, барлығы {total}",
+    timeUp: "⏰ Уақыт бітті!",
+    connectionLost: "Байланыс үзілді",
+    reloadPage: "Бетті жаңарту",
+    confirmClear: "Барлық пайдаланушыларды жою?",
+    confirmReset: "Барлық нәтижелерді қалпына келтіру?",
+    phaseIdle: "⏳ Мәртебе: бастау күтілуде",
+    phasePlaying: "🔴 Мәртебе: {n}/{total}-сұрақ жүріп жатыр",
+    phaseFinished: "✅ Мәртебе: тест аяқталды",
+  }
+};
+let lang = null;
+function t(k){ return (lang && i18n[lang][k]) || k; }
+function applyTranslations(){
+  document.querySelectorAll('[data-t]').forEach(el => {
+    const k = el.getAttribute('data-t');
+    if (i18n[lang] && i18n[lang][k]) el.textContent = i18n[lang][k];
+  });
+}
+
+// ====== СОСТОЯНИЕ КЛИЕНТА ======
+let socket = null;
+let role = null;              // 'admin' | 'player'
+let pendingCode = '';
+let myId = null, myName = '', myScore = 0;
+let offset = 0;               // разница времени сервера и клиента
+let answeredFlag = false, selectedChoice = null;
+let currentTotal = 15;
+let timerInt = null;
+let antiCheatActive = false, cheatingDetected = false;
+
+const QUESTION_TIME = 15;
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  document.getElementById('mainContainer').scrollTop = 0;
+}
+function escapeHtml(s){
+  return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+function toast(text, cls){
+  const d = document.createElement('div');
+  d.className = 'toast' + (cls ? ' ' + cls : '');
+  d.textContent = text;
+  document.body.appendChild(d);
+  setTimeout(() => d.remove(), 1400);
+}
+
+// ====== ЯЗЫК / ПОДКЛЮЧЕНИЕ ======
+function setLang(l){
+  lang = l;
+  document.documentElement.lang = l;
+  applyTranslations();
+  connectSocket();
+  show('login');
+  setTimeout(() => document.getElementById('codeInput').focus(), 100);
+}
+function backToLang(){
+  if (socket) { socket.disconnect(); socket = null; }
+  show('lang');
+}
+
+function connectSocket(){
+  if (socket) return;
+  socket = io();
+  socket.on('connect', () => document.getElementById('connLost').classList.add('hidden'));
+  socket.on('disconnect', () => document.getElementById('connLost').classList.remove('hidden'));
+
+  // --- вход ---
+  socket.on('join:admin', () => { role = 'admin'; show('admin'); });
+  socket.on('join:needName', () => { show('register'); setTimeout(() => document.getElementById('nameInput').focus(), 100); });
+  socket.on('join:error', d => { document.getElementById('loginError').textContent = t(d.key); });
+
+  // --- регистрация / возврат ---
+  socket.on('register:error', d => { document.getElementById('regError').textContent = t(d.key); });
+  socket.on('joined', d => {
+    role = 'player';
+    myId = d.user.id; myName = d.user.name; myScore = d.user.score || 0;
+    offset = d.serverTime - Date.now();
+    if (d.question) { onQuestion(d.question); }      // возврат посреди теста
+    else {
+      document.getElementById('lobbyName').textContent = myName;
+      show('lobby');
+    }
+  });
+
+  // --- лобби ---
+  socket.on('lobby:update', d => {
+    if (role !== 'player') return;
+    const txt = document.getElementById('lobbyText');
+    if (txt) txt.textContent = d.phase === 'finished' ? t('lobbyFinished') : t('waitAdmin');
+    const cnt = document.getElementById('lobbyCount');
+    if (cnt) cnt.textContent = t('waitingPlayers').replace('{n}', d.waiting.length);
+    const chips = document.getElementById('lobbyChips');
+    if (chips) chips.innerHTML = d.waiting.slice(0, 20).map(n => `<span class="chip">${escapeHtml(n)}</span>`).join('');
+  });
+
+  // --- тест ---
+  socket.on('quiz:question', onQuestion);
+  socket.on('answer:result', d => {
+    myScore = d.score;
+    document.getElementById('currentScore').textContent = myScore;
+    toast(d.correct ? '+' + d.points : '✗', d.correct ? 'good' : 'bad');
+  });
+  socket.on('quiz:questionEnd', d => {
+    clearInterval(timerInt);
+    updateTimerUI(0);
+    const buttons = document.querySelectorAll('.option');
+    buttons.forEach((b, i) => {
+      b.disabled = true;
+      if (i === d.correct) b.classList.add('correct');
+      else if (i === selectedChoice) b.classList.add('wrong');
+    });
+    if (!answeredFlag) toast(t('timeUp'), 'bad');
+  });
+  socket.on('quiz:finished', d => {
+    disableAntiCheat();
+    clearInterval(timerInt);
+    document.getElementById('finalScore').textContent = myScore;
+    const pct = myScore / (1000 * currentTotal);
+    document.getElementById('resultMsg').textContent =
+      pct >= 0.9 ? t('perfect') : pct >= 0.7 ? t('great') : pct >= 0.4 ? t('good') : t('bad');
+    renderLeaderboard(d.leaderboard);
+    show('result');
+  });
+  socket.on('quiz:stopped', () => {
+    disableAntiCheat();
+    clearInterval(timerInt);
+    if (role === 'player') {
+      document.getElementById('lobbyName').textContent = myName;
+      show('lobby');
+    }
+  });
+  socket.on('kicked', () => { disableAntiCheat(); showWarning(); });
+
+  // --- админ ---
+  socket.on('admin:update', renderAdmin);
+}
+
+function submitCode(){
+  const code = document.getElementById('codeInput').value.trim();
+  document.getElementById('loginError').textContent = '';
+  pendingCode = code;
+  socket.emit('join', { code });
+  document.getElementById('codeInput').value = '';
+}
+function doRegister(){
+  const name = document.getElementById('nameInput').value.trim();
+  document.getElementById('regError').textContent = '';
+  if (!name) { document.getElementById('regError').textContent = t('nameRequired'); return; }
+  socket.emit('register', { code: pendingCode, name });
+}
+function exitToLogin(){
+  if (socket && role === 'player') socket.emit('leave');
+  setTimeout(() => location.reload(), 250);
+}
+
+// ====== ВОПРОСЫ ======
+function onQuestion(d){
+  currentTotal = d.total;
+  offset = d.serverTime - Date.now();
+  if (d.qIndex === 0) myScore = 0;
+  answeredFlag = !!d.answered;
+  selectedChoice = null;
+  enableAntiCheat();
+  show('quiz');
+
+  document.getElementById('questionNum').textContent =
+    t('questionOf').replace('{n}', d.qIndex + 1).replace('{total}', d.total);
+  document.getElementById('questionText').textContent = d.q[lang] || d.q.ru;
+  document.getElementById('currentScore').textContent = myScore;
+  document.getElementById('progressBar').style.width = (d.qIndex / d.total * 100) + '%';
+
+  const opts = document.getElementById('options');
+  opts.innerHTML = '';
+  d.o.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'option';
+    btn.textContent = opt;
+    btn.onclick = () => clickAnswer(i, btn);
+    if (answeredFlag) btn.disabled = true;
+    opts.appendChild(btn);
+  });
+  startTimer(d.deadline);
+}
+
+function clickAnswer(i, btn){
+  if (answeredFlag || !socket) return;
+  answeredFlag = true;
+  selectedChoice = i;
+  btn.classList.add('selected');
+  document.querySelectorAll('.option').forEach(b => b.disabled = true);
+  socket.emit('answer', { choice: i });
+}
+
+function startTimer(deadline){
+  clearInterval(timerInt);
+  timerInt = setInterval(() => {
+    const left = (deadline - (Date.now() + offset)) / 1000;
+    if (left <= 0) { updateTimerUI(0); clearInterval(timerInt); return; }
+    updateTimerUI(left);
+  }, 100);
+}
+function updateTimerUI(left){
+  const disp = document.getElementById('timerDisplay');
+  const fill = document.getElementById('timerFill');
+  disp.textContent = Math.ceil(left);
+  fill.style.width = (left / QUESTION_TIME * 100) + '%';
+  const danger = left <= 5;
+  disp.classList.toggle('danger', danger);
+  fill.classList.toggle('danger', danger);
+}
+
+// ====== РЕЗУЛЬТАТ / РЕЙТИНГ ======
+function renderLeaderboard(list){
+  const top = list.slice(0, 10);
+  const el = document.getElementById('finalLeaderboard');
+  if (!top.length) { el.innerHTML = `<p style="color:#888;">${t('noUsers')}</p>`; return; }
+  el.innerHTML = top.map((u, i) => {
+    const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1);
+    return `<div class="lb-row ${u.id === myId ? 'me' : ''}">
+      <span><span class="lb-rank">${medal}</span> <strong>${escapeHtml(u.name)}</strong></span>
+      <span><strong>${u.score}</strong> ${t('points')}</span>
+    </div>`;
+  }).join('');
+}
+
+// ====== АДМИН ======
+function renderAdmin(d){
+  if (role !== 'admin') return;
+  const u = d.users;
+  document.getElementById('stat-total').textContent = u.length;
+  document.getElementById('stat-waiting').textContent = u.filter(x => x.status === 'waiting').length;
+  document.getElementById('stat-playing').textContent = u.filter(x => x.status === 'playing').length;
+  document.getElementById('stat-finished').textContent = u.filter(x => x.status === 'finished').length;
+
+  const phaseEl = document.getElementById('adminPhase');
+  phaseEl.textContent = d.phase === 'playing'
+    ? t('phasePlaying').replace('{n}', d.currentQ + 1).replace('{total}', d.total)
+    : d.phase === 'finished' ? t('phaseFinished') : t('phaseIdle');
+
+  document.getElementById('startBtn').disabled = d.phase === 'playing';
+  document.getElementById('stopBtn').disabled = d.phase !== 'playing';
+
+  const tbody = document.getElementById('usersTable');
+  if (!u.length) {
+    tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">${t('noUsers')}</td></tr>`;
+  } else {
+    tbody.innerHTML = u.map((x, i) => `<tr>
+      <td><span class="td-label">#</span><span>${i + 1}</span></td>
+      <td><span class="td-label">${t('name')}</span>
+        <span><span class="online-dot">${x.online ? '🟢' : '⚪'}</span><strong>${escapeHtml(x.name)}</strong></span></td>
+      <td><span class="td-label">${t('status')}</span><span class="status ${x.status}">${t('s' + x.status.charAt(0).toUpperCase() + x.status.slice(1))}</span></td>
+      <td><span class="td-label">${t('progress')}</span><span>${x.progress} / ${d.total}</span></td>
+      <td><span class="td-label">${t('score')}</span><strong>${x.score}</strong></td>
+      <td><span class="td-label">${t('actions')}</span><span class="actions">
+        <button class="secondary" onclick="socket.emit('admin:resetUser',{userId:'${x.id}'})">${t('reset')}</button>
+        <button class="danger" onclick="socket.emit('admin:kick',{userId:'${x.id}'})">${t('kick')}</button>
+      </span></td>
+    </tr>`).join('');
+  }
+
+  const lb = document.getElementById('leaderboardAdmin');
+  const top = u.slice(0, 10);
+  lb.innerHTML = top.length
+    ? top.map((x, i) => {
+        const medal = i === 0 ? '🥇' : i === 1 ? '🥈' : i === 2 ? '🥉' : '#' + (i + 1);
+        return `<div class="lb-row">
+          <span><span class="lb-rank">${medal}</span> ${x.online ? '🟢' : '⚪'} <strong>${escapeHtml(x.name)}</strong></span>
+          <span><strong>${x.score}</strong> ${t('points')}</span>
+        </div>`;
+      }).join('')
+    : `<p style="color:#888;padding:8px;">${t('noUsers')}</p>`;
+}
+function adminReset(){ if (confirm(t('confirmReset'))) socket.emit('admin:reset'); }
+function adminClear(){ if (confirm(t('confirmClear'))) socket.emit('admin:clear'); }
+
+// ====== АНТИЧИТ ======
+function onVisibilityChange(){ if (antiCheatActive && document.hidden) triggerCheat(); }
+function onBlur(){
+  if (!antiCheatActive) return;
+  setTimeout(() => { if (antiCheatActive && document.hidden) triggerCheat(); }, 150);
+}
+function onKeyDown(e){
+  if (!antiCheatActive) return;
+  if (e.key === 'PrintScreen' || e.code === 'PrintScreen') {
+    e.preventDefault();
+    try { navigator.clipboard.writeText(''); } catch(_){}
+  }
+  if ((e.metaKey || e.key === 'Meta') && e.shiftKey) e.preventDefault();
+  if (e.key === 'F12' || (e.ctrlKey && e.shiftKey && ['I','i','J','j','C','c'].includes(e.key))) e.preventDefault();
+}
+function blockCtx(e){ if (antiCheatActive) e.preventDefault(); }
+
+function enableAntiCheat(){
+  if (antiCheatActive) return;
+  antiCheatActive = true;
+  document.addEventListener('visibilitychange', onVisibilityChange);
+  window.addEventListener('blur', onBlur);
+  document.addEventListener('keydown', onKeyDown, true);
+  document.addEventListener('contextmenu', blockCtx);
+  try {
+    if (document.documentElement.requestFullscreen)
+      document.documentElement.requestFullscreen().catch(() => {});
+  } catch(_){}
+}
+function disableAntiCheat(){
+  antiCheatActive = false;
+  document.removeEventListener('visibilitychange', onVisibilityChange);
+  window.removeEventListener('blur', onBlur);
+  document.removeEventListener('keydown', onKeyDown, true);
+  document.removeEventListener('contextmenu', blockCtx);
+  try { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); } catch(_){}
+}
+function triggerCheat(){
+  if (cheatingDetected) return;
+  cheatingDetected = true;
+  clearInterval(timerInt);
+  disableAntiCheat();
+  if (socket) socket.emit('cheat');
+  showWarning();
+}
+function showWarning(){
+  document.getElementById('warningScreen').classList.remove('hidden');
+  document.getElementById('mainContainer').classList.add('hidden');
+}
+
+window.addEventListener('beforeunload', e => {
+  if (antiCheatActive) { e.preventDefault(); e.returnValue = ''; }
+});
+document.getElementById('codeInput').addEventListener('keypress', e => { if (e.key === 'Enter') submitCode(); });
+document.getElementById('nameInput').addEventListener('keypress', e => { if (e.key === 'Enter') doRegister(); });
+</script>
+</body>
+</html>
